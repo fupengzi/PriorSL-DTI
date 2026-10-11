@@ -497,9 +497,17 @@ def build_model(cfg: dict, device: torch.device, state_dict=None) -> torch.nn.Mo
     model_cfg = cfg["model"]
     if model_cfg.get("architecture", "current") != "current":
         raise ValueError("This compact release supports only the paper's current architecture.")
-    drug_dim = infer_embedding_dim(cfg["embedding"]["drug_embedding_dir"])
-    protein_dim = infer_embedding_dim(cfg["embedding"]["protein_embedding_dir"])
+    drug_dim = infer_embedding_dim(cfg["embedding"]["drug_embedding_dir"]) if model_cfg.get("drug_encoder_type", "plm") == "plm" else model_cfg["hidden_dim"]
+    protein_dim = infer_embedding_dim(cfg["embedding"]["protein_embedding_dir"]) if model_cfg.get("protein_encoder_type", "plm") == "plm" else model_cfg["hidden_dim"]
     kwargs = dict(model_cfg)
+    # Historical checkpoints store the former LDA configuration names.
+    for old_key, new_key in (("lda_strides", "lsa_strides"), ("lda_topk_ratio", "lsa_topk_ratio")):
+        if old_key in kwargs:
+            if new_key in kwargs and kwargs[new_key] != kwargs[old_key]:
+                raise ValueError(f"Conflicting configuration: {old_key} and {new_key}")
+            kwargs[new_key] = kwargs.pop(old_key)
+    if "lsda_types" in kwargs:
+        kwargs["lsda_types"] = ["lsa" if value == "lda" else value for value in kwargs["lsda_types"]]
     kwargs.pop("architecture", None)
     kwargs.pop("fusion_layers", None)
     kwargs.pop("drug_conditioned_prior", None)

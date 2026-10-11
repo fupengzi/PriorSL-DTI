@@ -10,9 +10,9 @@ This repository provides code for data preparation, feature extraction, model tr
 
 ```text
 model.py       Model architecture, including SDA and LSA
-data.py        Data conversion and hot/cold splitting
+data.py        Conversion of fixed warm/cold splits
 features.py    MoLFormer and ESM-2 feature extraction
-main.py        Training, evaluation and ten-fold experiments
+main.py        Training, evaluation and ten repeated runs
 deletion.py    Deletion-faithfulness analysis and plotting
 ```
 
@@ -48,7 +48,7 @@ The default encoders are MoLFormer-XL and ESM-2-150M. A local Hugging Face model
 
 ## Training
 
-Run all hot- and cold-start splits for ten folds:
+Run the ten predefined warm- and cold-start splits:
 
 ```bash
 python -u main.py run --train --converted_root data/converted/biosnap
@@ -69,3 +69,5 @@ python deletion.py plot --protein_summary outputs/deletion/protein/deletion_summ
 ```
 
 Training uses all configured epochs and saves the checkpoint with the best validation AUROC. 
+
+To reproduce the experiments, use the provided splits. Conversion preserves every row, its order and split membership without deduplication or re-splitting. All warm/cold runs use the shared 512-dimensional configuration. Thresholds are selected on validation MCC. Historical `lda` checkpoint keys are mapped to `lsa` when loading. Ablation experiment scripts are not included.

@@ -20,6 +20,139 @@ except ImportError:
     from torch.cuda.amp import GradScaler, autocast
     _AMP_REQUIRES_DEVICE_TYPE = False
 
+import numpy as np
+from sklearn.metrics import (
+    accuracy_score,
+    average_precision_score,
+    confusion_matrix,
+    f1_score,
+    matthews_corrcoef,
+    roc_auc_score,
+)
+
+
+def _rankdata(values: np.ndarray) -> np.ndarray:
+    order = np.argsort(values)
+    ranks = np.empty(len(values), dtype=np.float64)
+    sorted_values = values[order]
+    i = 0
+    while i < len(values):
+        j = i
+        while j + 1 < len(values) and sorted_values[j + 1] == sorted_values[i]:
+            j += 1
+        ranks[order[i : j + 1]] = 0.5 * (i + j) + 1.0
+        i = j + 1
+    return ranks
+
+
+def concordance_index(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    n = 0
+    score = 0.0
+    for i in range(len(y_true)):
+        diff = y_true[i] - y_true[i + 1 :]
+        valid = diff != 0
+        if not np.any(valid):
+            continue
+        pred_diff = y_pred[i] - y_pred[i + 1 :]
+        score += np.sum((pred_diff[valid] * diff[valid]) > 0)
+        score += 0.5 * np.sum(pred_diff[valid] == 0)
+        n += np.sum(valid)
+    return float(score / n) if n > 0 else float("nan")
+
+
+def regression_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
+    y_true = np.asarray(y_true, dtype=np.float64)
+    y_pred = np.asarray(y_pred, dtype=np.float64)
+    mse = float(np.mean((y_pred - y_true) ** 2))
+    mae = float(np.mean(np.abs(y_pred - y_true)))
+
+    pearson = float(np.corrcoef(y_true, y_pred)[0, 1]) if len(y_true) > 1 else float("nan")
+    true_rank = _rankdata(y_true)
+    pred_rank = _rankdata(y_pred)
+    spearman = (
+        float(np.corrcoef(true_rank, pred_rank)[0, 1]) if len(y_true) > 1 else float("nan")
+    )
+
+    return {
+        "mse": mse,
+        "rmse": float(np.sqrt(mse)),
+        "mae": mae,
+        "pearson": pearson,
+        "spearman": spearman,
+        "ci": concordance_index(y_true, y_pred),
+    }
+
+
+def binary_classification_metrics(
+    y_true: np.ndarray,
+    y_score: np.ndarray,
+    threshold: float = 0.5,
+) -> dict[str, float]:
+    y_true = np.asarray(y_true, dtype=np.int64)
+    y_score = np.asarray(y_score, dtype=np.float64)
+    y_pred = (y_score >= threshold).astype(np.int64)
+
+    labels = [0, 1]
+    tn, fp, fn, tp = confusion_matrix(y_true, y_pred, labels=labels).ravel()
+    sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+    specificity = tn / (tn + fp) if (tn + fp) > 0 else 0.0
+
+    return {
+        "auc": float(roc_auc_score(y_true, y_score)) if len(np.unique(y_true)) == 2 else float("nan"),
+        "aupr": float(average_precision_score(y_true, y_score))
+        if len(np.unique(y_true)) == 2
+        else float("nan"),
+        "accuracy": float(accuracy_score(y_true, y_pred)),
+        "f1": float(f1_score(y_true, y_pred, zero_division=0)),
+        "sensitivity": float(sensitivity),
+        "specificity": float(specificity),
+        "mcc": float(matthews_corrcoef(y_true, y_pred)),
+    }
+
+
+def find_best_threshold(
+    y_true: np.ndarray,
+    y_score: np.ndarray,
+    metric: str = "mcc",
+) -> tuple[float, float]:
+    y_true = np.asarray(y_true, dtype=np.int64)
+    y_score = np.asarray(y_score, dtype=np.float64)
+    thresholds = np.linspace(0.05, 0.95, 181)
+    best_threshold = 0.5
+    best_value = -float("inf")
+
+    for threshold in thresholds:
+        y_pred = (y_score >= threshold).astype(np.int64)
+        if metric == "f1":
+            value = f1_score(y_true, y_pred, zero_division=0)
+        elif metric == "accuracy":
+            value = accuracy_score(y_true, y_pred)
+        elif metric == "mcc":
+            value = matthews_corrcoef(y_true, y_pred)
+        else:
+            raise ValueError(f"Unsupported threshold metric: {metric}")
+        if value > best_value:
+            best_value = float(value)
+            best_threshold = float(threshold)
+
+    return best_threshold, best_value
+
+import os
+import random
+
+import numpy as np
+import torch
+
+
+def set_seed(seed: int = 42) -> None:
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
+
 def load_config(path: str | Path) -> dict:
     with open(path, 'r', encoding='utf-8') as f:
         return yaml.safe_load(f)
