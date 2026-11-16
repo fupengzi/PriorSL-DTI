@@ -93,5 +93,3 @@ python deletion.py plot --protein_summary outputs/deletion/protein/deletion_summ
 ```
 
 Training uses all configured epochs and saves the checkpoint with the best validation AUROC. 
-
-To reproduce the experiments, use the provided splits. Conversion preserves every row, its order and split membership without deduplication or re-splitting. All warm/cold runs use the shared 512-dimensional configuration. Thresholds are selected on validation MCC. Historical `lda` checkpoint keys are mapped to `lsa` when loading. Ablation experiment scripts are not included.
