@@ -371,7 +371,7 @@ class PseudoBindingPrior(nn.Module):
             scores = scores.masked_fill(protein_mask, 0.0)
         return scores
 
-class CSLSDADTI(nn.Module):
+class PriorSLDTI(nn.Module):
 
     def __init__(self, drug_input_dim: int, protein_input_dim: int, hidden_dim: int=512, num_heads: int=8, ffn_dim: int=2048, dropout: float=0.1, attention_dropout: float=0.1, drug_kernels: list[int] | None=None, protein_kernels: list[int] | None=None, lsda_types: list[str] | None=None, sda_window_sizes: list[int] | None=None, lsa_strides: list[int] | None=None, acl_kernel_size: int=3, acl_gamma_init: float=0.0001, use_multiscale_adapter: bool=True, use_acl: bool=True, use_reverse_cross_attention: bool=True, pooling_type: str='attention', use_pairwise_matching_features: bool=True, fusion_mode: str='lsda', drug_encoder_type: str='plm', protein_encoder_type: str='plm', raw_token_embedding_dim: int=128, raw_cnn_kernels: list[int] | None=None, use_pseudo_binding_prior: bool=True, prior_modulation_scale: float=0.5, sda_score_scale: float=1.0, lsa_topk_ratio: float=1.0, use_multiview_residual: bool=False, graph_hidden_dim: int=128, graph_layers: int=3, protein_sequence_kernels: list[int] | None=None, multiview_alpha: float=0.2, use_graph_residual: bool=True, use_sequence_residual: bool=True, use_interaction_aware_graph_gate: bool=False) -> None:
         super().__init__()
@@ -513,6 +513,6 @@ def build_model(cfg: dict, device: torch.device, state_dict=None) -> torch.nn.Mo
     kwargs.pop("drug_conditioned_prior", None)
     kwargs.pop("use_fingerprint_branch", None)
     kwargs.pop("freeze_encoder", None)
-    supported = inspect.signature(CSLSDADTI).parameters
+    supported = inspect.signature(PriorSLDTI).parameters
     kwargs = {key: value for key, value in kwargs.items() if key in supported}
-    return CSLSDADTI(drug_input_dim=drug_dim, protein_input_dim=protein_dim, **kwargs).to(device)
+    return PriorSLDTI(drug_input_dim=drug_dim, protein_input_dim=protein_dim, **kwargs).to(device)

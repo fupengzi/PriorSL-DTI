@@ -288,7 +288,7 @@ def convert_dataset(input_root: Path, output_root: Path, scenarios: list[str], f
     print(summary[['scenario', 'fold', 'split', 'rows', 'drugs', 'targets', 'within_split_duplicates_removed', 'cross_split_duplicates_removed']].to_string(index=False))
 
 def convert_cli() -> None:
-    parser = argparse.ArgumentParser(description='Convert random/E2/E3/E4 DTI splits to the CS-LSDA-DTI schema.')
+    parser = argparse.ArgumentParser(description='Convert random/E2/E3/E4 DTI splits to the PriorSL-DTI schema.')
     parser.add_argument('--input_root', required=True)
     parser.add_argument('--output_root', required=True)
     parser.add_argument('--scenarios', nargs='+', default=['random', 'e2', 'e3', 'e4'])

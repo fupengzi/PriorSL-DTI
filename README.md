@@ -1,8 +1,8 @@
-# CS-LSDA-DTI
+# PriorSL-DTI
 
-![Overview of the CS-LSDA-DTI architecture](assets/architecture.png)
+![Overview of the PriorSL-DTI architecture](assets/architecture.png)
 
-CS-LSDA-DTI is a sequence-based framework for drug-target interaction prediction. It combines pretrained MoLFormer and ESM-2 representations with multi-scale convolution, then uses a protein pseudo-binding prior to guide feature modulation, local aggregation and long-range candidate selection. Alternating short-range dense attention (SDA) and long-range sparse attention (LSA) blocks integrate drug and protein information through bidirectional cross-attention. An adaptive calibration layer refines the updated representations, followed by attention pooling and complementary feature fusion for prediction.
+PriorSL-DTI is a sequence-based framework for drug-target interaction prediction. It combines pretrained MoLFormer and ESM-2 representations with multi-scale convolution, then uses a protein pseudo-binding prior to guide feature modulation, local aggregation and long-range candidate selection. Alternating short-range dense attention (SDA) and long-range sparse attention (LSA) blocks integrate drug and protein information through bidirectional cross-attention. An adaptive calibration layer refines the updated representations, followed by attention pooling and complementary feature fusion for prediction.
 
 This repository provides code for data preparation, feature extraction, model training and deletion-faithfulness analysis.
 
@@ -21,12 +21,20 @@ deletion.py    Deletion-faithfulness analysis and plotting
 Python 3.10 and a CUDA GPU are recommended.
 
 ```bash
-conda create -n cs_lsda_dti python=3.10 -y
-conda activate cs_lsda_dti
+conda create -n priorsl_dti python=3.10 -y
+conda activate priorsl_dti
 pip install -r requirements.txt
 ```
 
-Install the PyTorch build matching your CUDA version when running on a GPU.
+For an RTX 3080 Ti (12 GB), install the CUDA 12.1 build of the pinned PyTorch version before the remaining dependencies:
+
+```bash
+python -m pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cu121
+python -m pip install -r requirements.txt
+python -c "import torch; print(torch.__version__, torch.cuda.is_available(), torch.cuda.get_device_name(0))"
+```
+
+Run these commands instead of the generic `pip install -r requirements.txt` above when using this GPU. The CUDA version shown by `nvidia-smi` is the driver capability; it need not match the PyTorch wheel version.
 
 ## Data and Features
 
@@ -55,6 +63,24 @@ python -u main.py run --train --converted_root data/converted/biosnap
 ```
 
 The dataset name, embedding directories and output directory are inferred from `converted_root`. Use the optional command arguments to override them. Replace `biosnap` with `bindingdb` or `drugbank` for the other datasets.
+
+### RTX 3080 Ti (12 GB) reproduction
+
+Start with one BioSNAP fold. Training uses the original batch size of 64, 150 epochs and FP16 setting from `config.yaml`.
+
+```bash
+python -u main.py run --input_root data/BioSNAP --converted_root data/converted/biosnap --convert --extract --train --scenarios random --folds 0 --output_dir outputs/smoke_biosnap
+```
+
+After the single fold succeeds, run all four predefined settings and ten folds for each dataset. Existing embedding files are reused.
+
+```bash
+python -u main.py run --input_root data/BioSNAP --converted_root data/converted/biosnap --convert --extract --train
+python -u main.py run --input_root data/BindingDB --converted_root data/converted/bindingdb --convert --extract --train
+python -u main.py run --input_root data/DrugBank --converted_root data/converted/drugbank --convert --extract --train
+```
+
+Check `outputs/<dataset>/summary.csv`, `fold_results.csv` and each `<setting>/<fold>/train.log`, `best_model.pt` and `test_metrics.json`. Make sure there is enough free disk space for pretrained model downloads, embedding caches and 40 checkpoints per dataset; a 50 GB data volume is not guaranteed to suffice. These commands have not been validated by a full run on an RTX 3080 Ti.
 
 ## Deletion Faithfulness
 

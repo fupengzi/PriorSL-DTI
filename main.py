@@ -282,9 +282,9 @@ def collect_threshold_report(y_true: np.ndarray, y_score: np.ndarray, selected_m
     return (selected_threshold, report)
 
 def train_cli() -> None:
-    parser = argparse.ArgumentParser(description='Train CS-LSDA-DTI on cached embeddings.')
+    parser = argparse.ArgumentParser(description='Train PriorSL-DTI on cached embeddings.')
     parser.add_argument('--config', default='config.yaml')
-    parser.add_argument('--output_dir', default='outputs/cs_lsda_dti_biosnap')
+    parser.add_argument('--output_dir', default='outputs/priorsl_dti_biosnap')
     args = parser.parse_args()
     cfg = load_config(args.config)
     set_seed(cfg['seed'])
@@ -383,7 +383,7 @@ from pathlib import Path
 import torch
 
 def evaluate_cli() -> None:
-    parser = argparse.ArgumentParser(description='Evaluate a saved CS-LSDA-DTI checkpoint.')
+    parser = argparse.ArgumentParser(description='Evaluate a saved PriorSL-DTI checkpoint.')
     parser.add_argument('--config', default='config.yaml')
     parser.add_argument('--checkpoint', required=True, help='Path to best_model.pt.')
     parser.add_argument('--split', default='test', choices=['train', 'valid', 'test'])
@@ -570,7 +570,7 @@ def write_fold_results_csv(results: list[dict], path: Path) -> None:
             writer.writerow([result['scenario'], result['fold'], result['started_at'], result['ended_at'], result['time_seconds'], result['time_minutes'], result['split_dir'], result['output_dir'], *[result['test'].get(name, '') for name in metric_names], *[best_threshold.get(name, '') for name in threshold_names]])
 
 def run_cli() -> None:
-    parser = argparse.ArgumentParser(description='Prepare and run CS-LSDA-DTI experiments on data1 datasets.')
+    parser = argparse.ArgumentParser(description='Prepare and run PriorSL-DTI experiments on the provided datasets.')
     parser.add_argument('--input_root', help='Raw dataset root containing random/e2/e3/e4.')
     parser.add_argument('--converted_root', required=True)
     parser.add_argument('--dataset_name', help='Defaults to the converted-root directory name.')
