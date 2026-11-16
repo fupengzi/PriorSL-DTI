@@ -40,45 +40,50 @@ data/<dataset>/{random,e2,e3,e4}/{0..9}/{train,validation,test}.csv
 Convert the splits and extract pretrained features:
 
 ```bash
-python data.py convert --input_root data/BioSNAP --output_root data/converted/biosnap
-python features.py drug --csv data/converted/biosnap --out_dir embeddings/biosnap/drug
-python features.py protein --csv data/converted/biosnap --out_dir embeddings/biosnap/protein
+python data.py convert --input_root data/BioSNAP --output_root data/converted/biosnap --scenarios random
+python features.py drug --csv data/converted/biosnap/random --out_dir embeddings/biosnap/drug
+python features.py protein --csv data/converted/biosnap/random --out_dir embeddings/biosnap/protein
 ```
 
 The default encoders are MoLFormer-XL and ESM-2-150M. A local Hugging Face model directory may be supplied with `--model_name`.
 
 ## Training
 
-Run the ten predefined warm- and cold-start splits:
+Run one dataset and one setting per command. `random` is the warm-start setting; `e2`, `e3` and `e4` are the cold-start settings. Each command runs ten folds using `config.yaml` (batch size 64, 150 epochs, FP16).
+
+BioSNAP:
 
 ```bash
-python -u main.py run --train --converted_root data/converted/biosnap
+python -u main.py run --input_root data/BioSNAP --converted_root data/converted/biosnap --convert --extract --train --scenarios random --output_dir outputs/biosnap_random
+python -u main.py run --input_root data/BioSNAP --converted_root data/converted/biosnap --convert --extract --train --scenarios e2 --output_dir outputs/biosnap_e2
+python -u main.py run --input_root data/BioSNAP --converted_root data/converted/biosnap --convert --extract --train --scenarios e3 --output_dir outputs/biosnap_e3
+python -u main.py run --input_root data/BioSNAP --converted_root data/converted/biosnap --convert --extract --train --scenarios e4 --output_dir outputs/biosnap_e4
 ```
 
-The dataset name, embedding directories and output directory are inferred from `converted_root`. Use the optional command arguments to override them. Replace `biosnap` with `bindingdb` or `drugbank` for the other datasets.
-
-### Reproduction
-
-Start with one BioSNAP fold to check the setup. Training uses batch size 64, 150 epochs and FP16 as specified in `config.yaml`.
+BindingDB:
 
 ```bash
-python -u main.py run --input_root data/BioSNAP --converted_root data/converted/biosnap --convert --extract --train --scenarios random --folds 0 --output_dir outputs/smoke_biosnap
+python -u main.py run --input_root data/BindingDB --converted_root data/converted/bindingdb --convert --extract --train --scenarios random --output_dir outputs/bindingdb_random
+python -u main.py run --input_root data/BindingDB --converted_root data/converted/bindingdb --convert --extract --train --scenarios e2 --output_dir outputs/bindingdb_e2
+python -u main.py run --input_root data/BindingDB --converted_root data/converted/bindingdb --convert --extract --train --scenarios e3 --output_dir outputs/bindingdb_e3
+python -u main.py run --input_root data/BindingDB --converted_root data/converted/bindingdb --convert --extract --train --scenarios e4 --output_dir outputs/bindingdb_e4
 ```
 
-After the single fold succeeds, run all four predefined settings and ten folds for each dataset. Existing embedding files are reused.
+DrugBank:
 
 ```bash
-python -u main.py run --input_root data/BioSNAP --converted_root data/converted/biosnap --convert --extract --train
-python -u main.py run --input_root data/BindingDB --converted_root data/converted/bindingdb --convert --extract --train
-python -u main.py run --input_root data/DrugBank --converted_root data/converted/drugbank --convert --extract --train
+python -u main.py run --input_root data/DrugBank --converted_root data/converted/drugbank --convert --extract --train --scenarios random --output_dir outputs/drugbank_random
+python -u main.py run --input_root data/DrugBank --converted_root data/converted/drugbank --convert --extract --train --scenarios e2 --output_dir outputs/drugbank_e2
+python -u main.py run --input_root data/DrugBank --converted_root data/converted/drugbank --convert --extract --train --scenarios e3 --output_dir outputs/drugbank_e3
+python -u main.py run --input_root data/DrugBank --converted_root data/converted/drugbank --convert --extract --train --scenarios e4 --output_dir outputs/drugbank_e4
 ```
 
-Check `outputs/<dataset>/summary.csv`, `fold_results.csv` and each `<setting>/<fold>/train.log`, `best_model.pt` and `test_metrics.json`.
+Converted data and embedding caches are reused across settings. Separate output directories preserve each setting's `summary.csv` and `fold_results.csv`; fold logs, checkpoints and test metrics are under `outputs/<dataset>_<setting>/<setting>/<fold>/`.
 
 ## Deletion Faithfulness
 
 ```bash
-python deletion.py run --config outputs/bindingdb/random/0/config.yaml --checkpoint outputs/bindingdb/random/0/best_model.pt --modality protein --random_repeats 20 --output_dir outputs/deletion/protein
+python deletion.py run --config outputs/bindingdb_random/random/0/config.yaml --checkpoint outputs/bindingdb_random/random/0/best_model.pt --modality protein --random_repeats 20 --output_dir outputs/deletion/protein
 ```
 
 Use `--modality drug` for drug-token deletion. Combine protein and drug results with:
